@@ -1,6 +1,7 @@
-package wearfind.entidades;
+package com.example.WearFind.entidades;
 
 import jakarta.persistence.*;
+
 @Entity
 public class Prenda {
     @Id
@@ -9,16 +10,9 @@ public class Prenda {
     private String nombre;
     private String descripcion;
     private String color;
-
-    @Enumerated(EnumType.STRING)
-    private Categoria categoria;
-
+    private String estacion;
     private String talle;
     private String marca;
-
-    @Enumerated(EnumType.STRING)
-    private Temporada temporada;
-
     private String url_imagen;
     private boolean favorito;
 
@@ -30,12 +24,12 @@ public class Prenda {
         // Constructor requerido por JPA
     }
 
-    public Prenda(long id, String nombre, String descripcion, String color, Categoria categoria) {
+    public Prenda(long id, String nombre, String descripcion, String color, String estacion) {
         this.id = id;
         this.nombre = nombre;
         this.descripcion = descripcion;
         this.color = color;
-        this.categoria = categoria;
+        this.estacion = estacion;
     }
 
     public long getId() {
@@ -54,10 +48,6 @@ public class Prenda {
         return color;
     }
 
-    public Categoria getCategoria() {
-        return categoria;
-    }
-
     public String getTalle() {
         return talle;
     }
@@ -66,8 +56,8 @@ public class Prenda {
         return marca;
     }
 
-    public Temporada getTemporada() {
-        return temporada;
+    public String getEstacion() {
+        return estacion;
     }
 
     public String getUrl_imagen() {
@@ -76,10 +66,6 @@ public class Prenda {
 
     public boolean isFavorito() {
         return favorito;
-    }
-
-    public Usuario getUsuario() {
-        return usuario;
     }
 
     public void setId(long id) {
@@ -98,10 +84,6 @@ public class Prenda {
         this.color = color;
     }
 
-    public void setCategoria(Categoria categoria) {
-        this.categoria = categoria;
-    }
-
     public void setTalle(String talle) {
         this.talle = talle;
     }
@@ -110,8 +92,8 @@ public class Prenda {
         this.marca = marca;
     }
 
-    public void setTemporada(Temporada temporada) {
-        this.temporada = temporada;
+    public void setEstacion(String estacion) {
+        this.estacion = estacion;
     }
 
     public void setUrl_imagen(String url_imagen) {

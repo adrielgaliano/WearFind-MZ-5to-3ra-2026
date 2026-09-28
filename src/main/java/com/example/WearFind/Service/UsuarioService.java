@@ -1,11 +1,11 @@
-package wearfind.Service;
+package com.example.WearFind.Service;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import wearfind.Iservice.UsuarioIservice;
-import wearfind.Repository.UsuarioRepository;
-import wearfind.entidades.Usuario;
+import com.example.WearFind.Iservice.UsuarioIservice;
+import com.example.WearFind.Repository.UsuarioRepository;
+import com.example.WearFind.entidades.Usuario;
 
 @Service
 public class UsuarioService implements UsuarioIservice {

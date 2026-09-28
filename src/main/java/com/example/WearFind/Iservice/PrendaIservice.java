@@ -1,7 +1,6 @@
-package wearfind.Iservice;
-
+package com.example.WearFind.Iservice;
 import java.util.List;
-import wearfind.entidades.Prenda;
+import com.example.WearFind.entidades.Prenda;
 
 public interface PrendaIservice {
     public List<Prenda> findAllPrendas();

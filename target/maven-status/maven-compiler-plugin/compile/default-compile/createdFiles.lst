@@ -1,0 +1,11 @@
+com\example\WearFind\Iservice\UsuarioIservice.class
+com\example\WearFind\Controller\PrendaController.class
+com\example\WearFind\Repository\PrendaRepository.class
+com\example\WearFind\entidades\Prenda.class
+com\example\WearFind\Iservice\PrendaIservice.class
+com\example\WearFind\WearFindApplication.class
+com\example\WearFind\Controller\UsuarioController.class
+com\example\WearFind\Service\PrendaService.class
+com\example\WearFind\entidades\Usuario.class
+com\example\WearFind\Repository\UsuarioRepository.class
+com\example\WearFind\Service\UsuarioService.class

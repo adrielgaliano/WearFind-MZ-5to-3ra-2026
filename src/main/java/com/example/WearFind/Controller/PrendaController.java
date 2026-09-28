@@ -1,14 +1,14 @@
-package wearfind.Controller;
+package com.example.WearFind.Controller;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import wearfind.Iservice.PrendaIservice;
-import wearfind.entidades.Prenda;
+import com.example.WearFind.Iservice.PrendaIservice;
+import com.example.WearFind.entidades.Prenda;
 
 @RestController
 @RequestMapping("/api/prendas")
-@CrossOrigin (origins="http://localhost:8080")
+@CrossOrigin(origins = "*")
 public class PrendaController {
 
     @Autowired

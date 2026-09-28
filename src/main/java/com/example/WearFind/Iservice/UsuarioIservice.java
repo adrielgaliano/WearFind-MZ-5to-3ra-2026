@@ -1,7 +1,7 @@
-package wearfind.Iservice;
+package com.example.WearFind.Iservice;
 
 import java.util.List;
-import wearfind.entidades.Usuario;
+import com.example.WearFind.entidades.Usuario;
 
 public interface UsuarioIservice {
     public List<Usuario> findAllUsuarios();

@@ -1,4 +1,4 @@
-package wearfind.entidades;
+package com.example.WearFind.entidades;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -15,7 +15,6 @@ public class Usuario {
     private List<Prenda> listaprendas = new ArrayList<>();
 
     public Usuario() {
-        // Constructor requerido por JPA
     }
 
     public Usuario(long id, String username, String email) {

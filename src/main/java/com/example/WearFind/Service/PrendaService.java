@@ -1,11 +1,11 @@
-package wearfind.Service;
+package com.example.WearFind.Service;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import wearfind.Iservice.PrendaIservice;
-import wearfind.Repository.PrendaRepository;
-import wearfind.entidades.Prenda;
+import com.example.WearFind.Iservice.PrendaIservice;
+import com.example.WearFind.Repository.PrendaRepository;
+import com.example.WearFind.entidades.Prenda;
 
 @Service
 public class PrendaService implements PrendaIservice {

@@ -1,14 +1,14 @@
-package wearfind.Controller;
+package com.example.WearFind.Controller;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import wearfind.Iservice.UsuarioIservice;
-import wearfind.entidades.Usuario;
+import com.example.WearFind.Iservice.UsuarioIservice;
+import com.example.WearFind.entidades.Usuario;
 
 @RestController
 @RequestMapping("/api/usuarios")
-@CrossOrigin (origins="http://localhost:8080")
+@CrossOrigin(origins = "*")
 public class UsuarioController {
 
     @Autowired
