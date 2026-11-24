@@ -39,7 +39,8 @@ public class PrendaService implements PrendaIservice {
     @Override
     @Transactional
     public Prenda savePrenda(Prenda prenda) {
-        // Usuario pedido por el frontend (campo "usuario" del JSON), si lo hay
+        boolean esNueva = prenda.getId() <= 0;
+
         Usuario solicitado = null;
         if (prenda.getUsuario() != null && prenda.getUsuario().getId() > 0) {
             solicitado = usuarioRepository.findById(prenda.getUsuario().getId())
@@ -49,30 +50,12 @@ public class PrendaService implements PrendaIservice {
 
         Prenda guardada = prendaRepository.save(prenda);
 
-        if (solicitado != null) {
-            sincronizarPropietario(guardada, solicitado);
+        // Solo asignamos dueño al crear la prenda (o si quedó huérfana), para no pisar prendas compartidas al editar
+        if (solicitado != null && (esNueva || !usuarioPrendaRepository.existsByPrendaId(guardada.getId()))) {
+            usuarioPrendaRepository.save(new UsuarioPrenda(solicitado, guardada));
         }
-        return cargarUsuarios(List.of(guardada)).get(0);
-    }
 
-    /**
-     * Compatibilidad con el formulario actual (un solo select de usuario):
-     *  - si el usuario pedido ya tiene la prenda, no se toca nada;
-     *  - si no la tiene, la prenda pasa a pertenecer a ese usuario.
-     * Para asignaciones múltiples usar /api/usuario-prendas.
-     */
-    private void sincronizarPropietario(Prenda prenda, Usuario solicitado) {
-        List<UsuarioPrenda> actuales = usuarioPrendaRepository.findByPrendaId(prenda.getId());
-        boolean yaAsignada = actuales.stream()
-                .anyMatch(up -> up.getUsuario().getId() == solicitado.getId());
-        if (yaAsignada) {
-            return;
-        }
-        if (!actuales.isEmpty()) {
-            usuarioPrendaRepository.deleteAll(actuales);
-            usuarioPrendaRepository.flush();
-        }
-        usuarioPrendaRepository.save(new UsuarioPrenda(solicitado, prenda));
+        return cargarUsuarios(List.of(guardada)).get(0);
     }
 
     @Override
@@ -113,10 +96,6 @@ public class PrendaService implements PrendaIservice {
         return prendaRepository.findSinUsuario();
     }
 
-    /**
-     * Completa los campos transitorios usuario / usuarios de cada prenda
-     * con una sola consulta a la tabla intermedia (evita N+1).
-     */
     private List<Prenda> cargarUsuarios(Collection<Prenda> prendas) {
         List<Prenda> resultado = new ArrayList<>(prendas);
         if (resultado.isEmpty()) {

@@ -1,28 +1,18 @@
--- ============================================================
---  WearFind · Esquema MySQL 8
---  Ejecutar con un usuario con permisos de CREATE (ej. root):
---    mysql -u root -p < sql/01_schema.sql
--- ============================================================
-
 CREATE DATABASE IF NOT EXISTS wearfind
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
 
 USE wearfind;
 
--- ------------------------------------------------------------
---  usuario
--- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS usuario (
     id        BIGINT       NOT NULL AUTO_INCREMENT,
     username  VARCHAR(255) NULL,
     email     VARCHAR(255) NULL,
-    PRIMARY KEY (id)
+    password  VARCHAR(255) NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_usuario_email UNIQUE (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ------------------------------------------------------------
---  prenda  (catálogo de prendas; ya NO guarda el usuario)
--- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS prenda (
     id           BIGINT        NOT NULL AUTO_INCREMENT,
     nombre       VARCHAR(255)  NULL,
@@ -36,11 +26,6 @@ CREATE TABLE IF NOT EXISTS prenda (
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ------------------------------------------------------------
---  usuario_prenda  (tabla intermedia, relación N:M)
---  Un usuario puede tener muchas prendas y una prenda puede
---  estar asignada a varios usuarios. El par es único.
--- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS usuario_prenda (
     id                BIGINT      NOT NULL AUTO_INCREMENT,
     usuario_id        BIGINT      NOT NULL,

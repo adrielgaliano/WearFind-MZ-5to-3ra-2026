@@ -9,4 +9,6 @@ public interface UsuarioIservice {
     public Usuario updateUsuario(Long id, Usuario usuario);
     public Usuario findUsuarioById(Long id);
     public void deleteUsuario(Long id);
+    public Usuario registrarUsuario(Usuario usuario);
+    public Usuario autenticar(String email, String password);
 }

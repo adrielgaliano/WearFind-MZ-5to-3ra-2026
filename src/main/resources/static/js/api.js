@@ -1,21 +1,51 @@
 /* ============================================================
    WearFind · API Client
-   Capa fina sobre fetch() para hablar con el backend Spring.
-   Todos los métodos devuelven Promesas; lanzan Error en caso
-   de respuesta no-OK para que la UI pueda mostrar toasts.
+   Gestión de sesión en localStorage y llamadas HTTP al backend.
    ============================================================ */
 
+class Sesion {
+  static token()  { return localStorage.getItem("token"); }
+  static id()     { return localStorage.getItem("usuarioId"); }
+  static nombre() { return localStorage.getItem("username"); }
+  static email()  { return localStorage.getItem("email"); }
+
+  static guardar(token, usuario) {
+    localStorage.setItem("token", token);
+    localStorage.setItem("usuarioId", usuario.id);
+    localStorage.setItem("username", usuario.username);
+    localStorage.setItem("email", usuario.email);
+  }
+
+  static cerrar() {
+    localStorage.clear();
+  }
+
+  static exigir() {
+    if (!Sesion.token()) {
+      window.location.href = "login.html";
+      return false;
+    }
+    return true;
+  }
+}
+
 const API = (function () {
-  // Cambiá esta URL si tu backend corre en otro host/puerto.
-  // El backend Spring usa server.port=8082 en application.properties.
   const BASE_URL = "http://localhost:8082/api";
 
   async function request(path, options = {}) {
     const url = `${BASE_URL}${path}`;
     const opts = {
-      headers: { "Content-Type": "application/json" },
       ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
     };
+
+    if (Sesion.token()) {
+      opts.headers.Authorization = "Bearer " + Sesion.token();
+    }
+
     if (opts.body && typeof opts.body !== "string") {
       opts.body = JSON.stringify(opts.body);
     }
@@ -24,15 +54,9 @@ const API = (function () {
     try {
       res = await fetch(url, opts);
     } catch (err) {
-      // Errores de red / CORS / backend caído
-      throw new Error(
-        "No se pudo conectar con el backend en " +
-        BASE_URL +
-        ". ¿Está corriendo Spring en el puerto 8082?"
-      );
+      throw new Error(`No se pudo conectar con el servidor en ${BASE_URL}`);
     }
 
-    // 204 No Content (delete exitoso)
     if (res.status === 204) return null;
 
     let data = null;
@@ -42,33 +66,42 @@ const API = (function () {
       catch { data = text; }
     }
 
+    if (res.status === 401 && path !== "/usuarios/login" && path !== "/usuarios/registro") {
+      Sesion.cerrar();
+      window.location.href = "login.html";
+      throw new Error("Debes iniciar sesión");
+    }
+
     if (!res.ok) {
-      const msg =
-        (data && (data.message || data.error)) ||
-        `Error ${res.status} ${res.statusText}`;
+      const msg = (data && (data.message || data.error)) || `Error ${res.status} ${res.statusText}`;
       throw new Error(msg);
     }
+
     return data;
   }
 
-  /* ----- Prendas ----- */
   const Prendas = {
     list: () => request("/prendas"),
     byId: (id) => request(`/prendas/${id}`),
     byUsuario: (usuarioId) => request(`/prendas/usuario/${usuarioId}`),
     create: (prenda) => request("/prendas", { method: "POST", body: prenda }),
+    update: (prenda) => request(`/prendas/${prenda.id}`, { method: "PUT", body: prenda }),
     remove: (id) => request(`/prendas/${id}`, { method: "DELETE" }),
-    // El backend no expone PUT; para "editar" usamos POST con id (save() upsert).
-    update: (prenda) => request("/prendas", { method: "POST", body: prenda }),
   };
 
-  /* ----- Usuarios ----- */
   const Usuarios = {
     list: () => request("/usuarios"),
     byId: (id) => request(`/usuarios/${id}`),
-    create: (usuario) => request("/usuarios", { method: "POST", body: usuario }),
     remove: (id) => request(`/usuarios/${id}`, { method: "DELETE" }),
   };
 
-  return { Prendas, Usuarios, BASE_URL };
+  const Auth = {
+    login: (email, password) =>
+      request("/usuarios/login", { method: "POST", body: { email, password } }),
+    registro: (username, email, password) =>
+      request("/usuarios/registro", { method: "POST", body: { username, email, password } }),
+    logout: () => request("/usuarios/logout", { method: "POST" }),
+  };
+
+  return { Prendas, Usuarios, Auth, BASE_URL };
 })();

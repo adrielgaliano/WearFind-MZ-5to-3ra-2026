@@ -2,8 +2,10 @@ package com.example.WearFind.Service;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import com.example.WearFind.Iservice.UsuarioIservice;
 import com.example.WearFind.Repository.PrendaRepository;
 import com.example.WearFind.Repository.UsuarioPrendaRepository;
@@ -52,6 +54,48 @@ public class UsuarioService implements UsuarioIservice {
         existente.setUsername(usuario.getUsername());
         existente.setEmail(usuario.getEmail());
         return usuarioRepository.save(existente);
+    }
+
+    @Override
+    @Transactional
+    public Usuario registrarUsuario(Usuario usuario) {
+        if (esVacio(usuario.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ingresá un username");
+        }
+        if (esVacio(usuario.getEmail()) || !usuario.getEmail().contains("@")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ingresá un email válido");
+        }
+        if (usuario.getPassword() == null || usuario.getPassword().length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La contraseña debe tener al menos 6 caracteres");
+        }
+
+        String email = usuario.getEmail().trim().toLowerCase();
+        if (usuarioRepository.existsByEmailIgnoreCase(email)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una cuenta con ese email");
+        }
+
+        usuario.setId(0);
+        usuario.setUsername(usuario.getUsername().trim());
+        usuario.setEmail(email);
+        usuario.setPassword(ClaveUtil.encriptar(usuario.getPassword()));
+        return usuarioRepository.save(usuario);
+    }
+
+    @Override
+    public Usuario autenticar(String email, String password) {
+        Usuario usuario = null;
+        if (email != null) {
+            usuario = usuarioRepository.findByEmailIgnoreCase(email.trim()).orElse(null);
+        }
+        // Mismo mensaje si el email no existe o la contraseña no coincide
+        if (usuario == null || !ClaveUtil.verificar(password, usuario.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email o contraseña incorrectos");
+        }
+        return usuario;
+    }
+
+    private boolean esVacio(String texto) {
+        return texto == null || texto.trim().isEmpty();
     }
 
     @Override

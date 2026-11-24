@@ -3,6 +3,7 @@ package com.example.WearFind.entidades;
 import java.util.ArrayList;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 @Entity
@@ -13,6 +14,11 @@ public class Usuario {
     private long id;
     private String username;
     private String email;
+
+    // Se guarda con hash (ver ClaveUtil). Se acepta al recibir el JSON (registro / alta de usuario)
+    // pero NUNCA se devuelve en las respuestas.
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    private String password;
 
     @JsonIgnore
     @OneToMany(mappedBy = "usuario")
@@ -37,6 +43,14 @@ public class Usuario {
 
     public String getEmail() {
         return email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public void setId(long id) {

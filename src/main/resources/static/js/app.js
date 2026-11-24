@@ -21,7 +21,6 @@ const App = (function () {
   const $  = (sel, ctx = document) => ctx.querySelector(sel);
   const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
-  // Mapa de colores -> hex para los puntos/swatches
   const COLOR_MAP = {
     "negro": "#1f1b16", "blanco": "#f8f5ef", "gris": "#9ca3af",
     "beige": "#e8d8c4", "cámel": "#c19a6b", "camel": "#c19a6b",
@@ -48,6 +47,7 @@ const App = (function () {
     if (key.includes("primavera")) return "season-Primavera";
     return "season-Todo";
   }
+
   function barClass(s) {
     if (!s) return "bar-Todo";
     const key = s.toLowerCase();
@@ -59,7 +59,6 @@ const App = (function () {
     return "bar-Todo";
   }
 
-  // Escape HTML para evitar inyecciones en texto del DOM
   function esc(str) {
     if (str == null) return "";
     return String(str)
@@ -70,16 +69,6 @@ const App = (function () {
       .replace(/'/g, "&#39;");
   }
 
-  // Imagen con fallback a placeholder SVG
-  function imgStyleOrFallback(url, nombre) {
-    if (url) {
-      return `style="background-image:url('${esc(url)}')"`;
-    }
-    const letter = (nombre || "?").trim().charAt(0).toUpperCase();
-    return `class="no-img" data-letter="${esc(letter)}"`;
-  }
-
-  // Toast
   let toastTimer;
   function toast(msg, type = "") {
     const el = $("#toast");
@@ -108,19 +97,24 @@ const App = (function () {
     }
   }
 
-  // Mapa id -> usuario para lookup rápido
   function usuarioById(id) {
     return state.usuarios.find((u) => String(u.id) === String(id));
   }
 
-  // Prendas filtradas según el usuario seleccionado
+  function prendaPerteneceAUsuario(prenda, userId) {
+    if (Array.isArray(prenda.usuarios) && prenda.usuarios.length > 0) {
+      return prenda.usuarios.some((u) => String(u.id) === String(userId));
+    }
+    return prenda.usuario != null && String(prenda.usuario.id) === String(userId);
+  }
+
+  function puedeEditarPrenda(prenda) {
+    return prendaPerteneceAUsuario(prenda, Sesion.id());
+  }
+
   function prendasForCurrent() {
     if (state.currentUserId == null) return state.prendas;
-    return state.prendas.filter((p) => {
-      const owner = p.usuario;
-      if (!owner) return false;
-      return String(owner.id) === String(state.currentUserId);
-    });
+    return state.prendas.filter((p) => prendaPerteneceAUsuario(p, state.currentUserId));
   }
 
   /* ---------- Routing de vistas ---------- */
@@ -132,21 +126,17 @@ const App = (function () {
 
     $$(".nav-item").forEach((n) => n.classList.toggle("active", n.dataset.view === view));
 
-    // Scroll al top
     $(".content").scrollTo({ top: 0, behavior: "smooth" });
-
-    // Cerrar sidebar en mobile
     closeSidebar();
   }
 
   /* ---------- Render: Dashboard ---------- */
   function renderDashboard() {
-    const prendas = state.prendas; // stats globales
+    const prendas = prendasForCurrent();
     const total = prendas.length;
     const favs = prendas.filter((p) => p.favorito).length;
     const totalUsers = state.usuarios.length;
 
-    // Distribución por estación
     const seasonCount = {};
     prendas.forEach((p) => {
       const s = p.estacion || "Todo el año";
@@ -155,7 +145,6 @@ const App = (function () {
     const seasonEntries = Object.entries(seasonCount).sort((a, b) => b[1] - a[1]);
     const maxSeason = Math.max(1, ...seasonEntries.map((e) => e[1]));
 
-    // Top 5 colores
     const colorCount = {};
     prendas.forEach((p) => {
       if (!p.color) return;
@@ -167,7 +156,6 @@ const App = (function () {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
-    // Stats cards
     const statIcons = {
       total: `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>`,
       fav: `<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="none"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`,
@@ -189,11 +177,10 @@ const App = (function () {
       </div>
     `).join("");
 
-    $("#totalSeasons").textContent = `${seasonEntries.length} estaciones`;
+    $("#totalSeasons").textContent = `${seasonEntries.length} ${seasonEntries.length === 1 ? "estación" : "estaciones"}`;
 
-    // Bars por estación
     if (seasonEntries.length === 0) {
-      $("#seasonBars").innerHTML = `<p class="muted">Sin datos para mostrar.</p>`;
+      $("#seasonBars").innerHTML = `<p class="muted">Aún no hay prendas en este armario.</p>`;
     } else {
       $("#seasonBars").innerHTML = seasonEntries.map(([name, count]) => `
         <div class="bar-row">
@@ -206,7 +193,6 @@ const App = (function () {
       `).join("");
     }
 
-    // Color list
     if (colorEntries.length === 0) {
       $("#colorList").innerHTML = `<p class="muted">Sin colores registrados.</p>`;
     } else {
@@ -223,7 +209,6 @@ const App = (function () {
       `).join("");
     }
 
-    // Favoritos grid
     const favPrendas = prendas.filter((p) => p.favorito).slice(0, 8);
     if (favPrendas.length === 0) {
       $("#favGrid").innerHTML = `<p class="muted" style="padding:12px">Aún no hay prendas marcadas como favoritas.</p>`;
@@ -252,15 +237,12 @@ const App = (function () {
   function renderPrendas() {
     let list = prendasForCurrent();
 
-    // Filtro por estación
     if (state.seasonFilter !== "all") {
       list = list.filter((p) => (p.estacion || "") === state.seasonFilter);
     }
-    // Filtro por favoritos
     if (state.favOnly) {
       list = list.filter((p) => p.favorito);
     }
-    // Filtro por búsqueda
     if (state.search) {
       const q = state.search.toLowerCase();
       list = list.filter((p) => {
@@ -270,9 +252,11 @@ const App = (function () {
       });
     }
 
-    // Subtitle
     const owner = state.currentUserId != null ? usuarioById(state.currentUserId) : null;
-    const ownerName = owner ? `de @${esc(owner.username)}` : "de todos los usuarios";
+    const esArmarioAjeno = owner && String(owner.id) !== String(Sesion.id());
+    const ownerName = owner
+      ? `de @${esc(owner.username)}${esArmarioAjeno ? " (solo lectura)" : ""}`
+      : "de todos los usuarios";
     $("#prendasSubtitle").textContent = `${list.length} ${list.length === 1 ? "prenda" : "prendas"} ${ownerName}`;
 
     const grid = $("#prendaGrid");
@@ -287,20 +271,44 @@ const App = (function () {
 
     grid.innerHTML = list.map((p) => {
       const fav = p.favorito;
+      const editable = puedeEditarPrenda(p);
       const letter = (p.nombre || "?").charAt(0).toUpperCase();
-      const owner = p.usuario;
-      const ownerName = owner ? `@${esc(owner.username)}` : "Sin asignar";
+      const duenos = Array.isArray(p.usuarios) && p.usuarios.length > 0
+        ? p.usuarios
+        : (p.usuario ? [p.usuario] : []);
+      const ownerLabel = duenos.length > 0
+        ? duenos.map((u) => `@${esc(u.username)}`).join(", ")
+        : "Sin asignar";
 
       const imgBlock = p.url_imagen
         ? `<div class="prenda-img" style="background-image:url('${esc(p.url_imagen)}')"></div>`
         : `<div class="prenda-img"><div class="no-img"><div class="placeholder">${esc(letter)}</div></div></div>`;
 
+      const favButton = editable
+        ? `<button class="fav-badge ${fav ? "active" : ""}" data-action="fav" data-id="${p.id}" title="${fav ? "Quitar de favoritos" : "Marcar como favorito"}">
+             <svg viewBox="0 0 24 24" width="16" height="16" fill="${fav ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+           </button>`
+        : (fav
+            ? `<span class="fav-badge active" style="cursor:default" title="Favorito de este armario">
+                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+               </span>`
+            : "");
+
+      const actionsBlock = editable
+        ? `<div class="card-actions">
+             <button data-action="edit" data-id="${p.id}" title="Editar">
+               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+             </button>
+             <button class="del" data-action="delete" data-id="${p.id}" title="Eliminar">
+               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+             </button>
+           </div>`
+        : `<span class="muted" style="font-size:12px">Solo lectura</span>`;
+
       return `
         <article class="card-prenda ${fav ? "fav" : ""}" data-id="${p.id}">
           ${imgBlock}
-          <button class="fav-badge ${fav ? "active" : ""}" data-action="fav" data-id="${p.id}" title="${fav ? "Quitar de favoritos" : "Marcar como favorito"}">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="${fav ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-          </button>
+          ${favButton}
           <span class="season-tag ${seasonClass(p.estacion)}">${esc(p.estacion || "Todo el año")}</span>
           <div class="prenda-body">
             <h3 class="prenda-name">${esc(p.nombre || "Sin nombre")}</h3>
@@ -311,15 +319,8 @@ const App = (function () {
             </div>
             ${p.descripcion ? `<p class="prenda-desc">${esc(p.descripcion)}</p>` : ""}
             <div class="prenda-foot">
-              <span class="owner">👤 <strong>${ownerName}</strong></span>
-              <div class="card-actions">
-                <button data-action="edit" data-id="${p.id}" title="Editar">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                </button>
-                <button class="del" data-action="delete" data-id="${p.id}" title="Eliminar">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                </button>
-              </div>
+              <span class="owner">👤 <strong>${ownerLabel}</strong></span>
+              ${actionsBlock}
             </div>
           </div>
         </article>
@@ -340,16 +341,17 @@ const App = (function () {
 
     grid.innerHTML = state.usuarios.map((u) => {
       const initial = (u.username || "?").charAt(0).toUpperCase();
-      const count = state.prendas.filter((p) => p.usuario && String(p.usuario.id) === String(u.id)).length;
-      const favCount = state.prendas.filter(
-        (p) => p.usuario && String(p.usuario.id) === String(u.id) && p.favorito
-      ).length;
+      const userPrendas = state.prendas.filter((p) => prendaPerteneceAUsuario(p, u.id));
+      const count = userPrendas.length;
+      const favCount = userPrendas.filter((p) => p.favorito).length;
+      const esMiCuenta = String(u.id) === String(Sesion.id());
+
       return `
         <article class="user-card-lg" data-id="${u.id}">
           <div class="user-head">
             <div class="avatar-lg">${esc(initial)}</div>
             <div>
-              <div class="user-name">@${esc(u.username)}</div>
+              <div class="user-name">@${esc(u.username)} ${esMiCuenta ? "(Vos)" : ""}</div>
               <div class="user-email">${esc(u.email)}</div>
             </div>
           </div>
@@ -369,9 +371,11 @@ const App = (function () {
           </div>
           <div class="user-actions">
             <button class="btn btn-ghost" data-user-action="view" data-id="${u.id}">Ver armario</button>
-            <button class="btn btn-ghost" data-user-action="delete" data-id="${u.id}">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            </button>
+            ${esMiCuenta ? `
+              <button class="btn btn-ghost" data-user-action="delete" data-id="${u.id}" title="Eliminar mi cuenta">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            ` : ""}
           </div>
         </article>
       `;
@@ -389,7 +393,6 @@ const App = (function () {
       $("#currentUserAvatar").textContent = "∞";
     }
 
-    // Drawer items
     const body = $("#drawerBody");
     const items = state.usuarios.map((u) => {
       const active = String(state.currentUserId) === String(u.id);
@@ -420,10 +423,16 @@ const App = (function () {
   /* ---------- Render: select de usuarios en form ---------- */
   function populateUsuarioSelect(selectedId) {
     const sel = $("#usuarioSelect");
-    sel.innerHTML = `<option value="">— Sin asignar —</option>` +
-      state.usuarios.map((u) =>
-        `<option value="${u.id}" ${String(selectedId) === String(u.id) ? "selected" : ""}>@${esc(u.username)} (${esc(u.email)})</option>`
-      ).join("");
+    const miId = String(Sesion.id());
+    const yo = usuarioById(miId);
+    if (yo) {
+      sel.innerHTML = `<option value="${yo.id}" selected>@${esc(yo.username)} (${esc(yo.email)})</option>`;
+    } else {
+      sel.innerHTML = `<option value="">— Sin asignar —</option>` +
+        state.usuarios.map((u) =>
+          `<option value="${u.id}" ${String(selectedId) === String(u.id) ? "selected" : ""}>@${esc(u.username)} (${esc(u.email)})</option>`
+        ).join("");
+    }
   }
 
   /* ---------- Render maestro ---------- */
@@ -437,6 +446,11 @@ const App = (function () {
 
   /* ---------- Acciones: Prenda CRUD ---------- */
   async function deletePrenda(id) {
+    const prenda = state.prendas.find((p) => String(p.id) === String(id));
+    if (prenda && !puedeEditarPrenda(prenda)) {
+      toast("No podés eliminar prendas de otro usuario", "error");
+      return;
+    }
     try {
       await API.Prendas.remove(id);
       state.prendas = state.prendas.filter((p) => String(p.id) !== String(id));
@@ -448,6 +462,10 @@ const App = (function () {
   }
 
   async function toggleFav(prenda) {
+    if (!puedeEditarPrenda(prenda)) {
+      toast("Solo podés marcar como favoritas tus propias prendas", "error");
+      return;
+    }
     try {
       prenda.favorito = !prenda.favorito;
       const updated = await API.Prendas.update(prenda);
@@ -455,7 +473,6 @@ const App = (function () {
       renderAll();
       toast(prenda.favorito ? "★ Agregado a favoritos" : "Quitado de favoritos", "success");
     } catch (err) {
-      // revert
       prenda.favorito = !prenda.favorito;
       toast(err.message || "No se pudo actualizar", "error");
     }
@@ -463,33 +480,25 @@ const App = (function () {
 
   /* ---------- Acciones: Usuario CRUD ---------- */
   async function deleteUsuario(id) {
+    if (String(id) !== String(Sesion.id())) {
+      toast("Solo podés eliminar tu propia cuenta", "error");
+      return;
+    }
     try {
       await API.Usuarios.remove(id);
-      state.usuarios = state.usuarios.filter((u) => String(u.id) !== String(id));
-      state.prendas = state.prendas.filter((p) => !p.usuario || String(p.usuario.id) !== String(id));
-      if (String(state.currentUserId) === String(id)) state.currentUserId = null;
-      renderAll();
-      toast("Usuario eliminado", "success");
+      Sesion.cerrar();
+      window.location.href = "login.html";
     } catch (err) {
       toast(err.message || "No se pudo eliminar el usuario", "error");
     }
   }
 
-  async function createUsuario(username, email) {
-    try {
-      const u = await API.Usuarios.create({ username, email });
-      state.usuarios.push(u);
-      renderAll();
-      toast("Usuario creado ✓", "success");
-      return u;
-    } catch (err) {
-      toast(err.message || "No se pudo crear el usuario", "error");
-      throw err;
-    }
-  }
-
   /* ---------- Form: Prenda create/edit ---------- */
   function openPrendaForm(prenda) {
+    if (prenda && !puedeEditarPrenda(prenda)) {
+      toast("No tenés permiso para editar esta prenda", "error");
+      return;
+    }
     const form = $("#prendaForm");
     form.reset();
     if (prenda) {
@@ -501,11 +510,11 @@ const App = (function () {
       form.marca.value = prenda.marca || "";
       form.url_imagen.value = prenda.url_imagen || "";
       form.favorito.checked = !!prenda.favorito;
-      populateUsuarioSelect(prenda.usuario ? prenda.usuario.id : "");
+      populateUsuarioSelect(Sesion.id());
       form.dataset.editId = prenda.id;
     } else {
       delete form.dataset.editId;
-      populateUsuarioSelect(state.currentUserId);
+      populateUsuarioSelect(Sesion.id());
       form.estacion.value = "Todo el año";
     }
     updateImgPreview();
@@ -527,6 +536,17 @@ const App = (function () {
   async function submitPrendaForm(e) {
     e.preventDefault();
     const form = e.target;
+    const urlImg = form.url_imagen.value.trim();
+
+    if (urlImg.startsWith("data:")) {
+      toast("No pegues imágenes en Base64; usá el enlace directo (https://...)", "error");
+      return;
+    }
+    if (urlImg.length > 1000) {
+      toast("La URL de la imagen es demasiado larga (máximo 1000 caracteres)", "error");
+      return;
+    }
+
     const data = {
       nombre: form.nombre.value.trim(),
       descripcion: form.descripcion.value.trim(),
@@ -534,13 +554,18 @@ const App = (function () {
       estacion: form.estacion.value,
       talle: form.talle.value,
       marca: form.marca.value.trim(),
-      url_imagen: form.url_imagen.value.trim(),
+      url_imagen: urlImg || null,
       favorito: form.favorito.checked,
     };
-    const usuarioId = form.usuarioId.value;
+
+    const usuarioId = form.usuarioId.value || Sesion.id();
     if (usuarioId) {
       const u = usuarioById(usuarioId);
-      if (u) data.usuario = { id: u.id, username: u.username, email: u.email };
+      if (u) {
+        data.usuario = { id: Number(u.id), username: u.username, email: u.email };
+      } else {
+        data.usuario = { id: Number(usuarioId) };
+      }
     }
 
     if (!data.nombre) {
@@ -554,14 +579,13 @@ const App = (function () {
 
     try {
       if (form.dataset.editId) {
-        // Edición: adjuntamos id y enviamos por POST (upsert)
         const id = Number(form.dataset.editId);
         const existing = state.prendas.find((p) => String(p.id) === String(id));
-        data.id = id;
-        // conservar relaciones si no se asignó usuario
-        if (!data.usuario && existing && existing.usuario) {
-          data.usuario = existing.usuario;
+        if (existing && !puedeEditarPrenda(existing)) {
+          toast("No podés editar prendas de otro usuario", "error");
+          return;
         }
+        data.id = id;
         const updated = await API.Prendas.update(data);
         const idx = state.prendas.findIndex((p) => String(p.id) === String(id));
         if (idx >= 0) state.prendas[idx] = Object.assign(state.prendas[idx], updated);
@@ -569,9 +593,10 @@ const App = (function () {
       } else {
         const created = await API.Prendas.create(data);
         state.prendas.push(created);
+        state.currentUserId = Number(Sesion.id());
         toast("Prenda creada ✓", "success");
       }
-      await loadAll(); // refrescar para mantener consistencia
+      await loadAll();
       renderAll();
       setView("prendas");
     } catch (err) {
@@ -592,15 +617,6 @@ const App = (function () {
   function hideConfirm() {
     $("#confirmModal").classList.add("hidden");
     state.confirmCallback = null;
-  }
-
-  /* ---------- User modal ---------- */
-  function showUserModal() {
-    $("#userForm").reset();
-    $("#userModal").classList.remove("hidden");
-  }
-  function hideUserModal() {
-    $("#userModal").classList.add("hidden");
   }
 
   /* ---------- Drawer ---------- */
@@ -627,26 +643,39 @@ const App = (function () {
     }
   }
 
+  /* ---------- Sesión ---------- */
+  function renderSesion() {
+    const nombre = Sesion.nombre() || "?";
+    $("#sessionName").textContent = "@" + nombre;
+    $("#sessionAvatar").textContent = nombre.charAt(0).toUpperCase();
+  }
+
+  async function logout() {
+    try {
+      await API.Auth.logout();
+    } catch (err) {
+      console.error(err);
+    }
+    Sesion.cerrar();
+    window.location.href = "login.html";
+  }
+
   /* ---------- Bindings ---------- */
   function bind() {
-    // Nav
     $$(".nav-item").forEach((btn) => {
       btn.addEventListener("click", () => setView(btn.dataset.view));
     });
-    // data-goto links
     document.addEventListener("click", (e) => {
       const link = e.target.closest("[data-goto]");
       if (link) setView(link.dataset.goto);
     });
 
-    // New prenda button (topbar + empty state)
     $("#newPrendaBtn").addEventListener("click", () => openPrendaForm(null));
     document.addEventListener("click", (e) => {
       const a = e.target.closest('[data-action="new"]');
       if (a) openPrendaForm(null);
     });
 
-    // Refresh
     $("#refreshBtn").addEventListener("click", async () => {
       toast("Actualizando…");
       await loadAll();
@@ -654,14 +683,12 @@ const App = (function () {
       toast("Datos actualizados ✓", "success");
     });
 
-    // Search
     $("#searchInput").addEventListener("input", (e) => {
       state.search = e.target.value.trim();
       if (state.view !== "prendas") setView("prendas");
       renderPrendas();
     });
 
-    // Season chips
     $("#seasonChips").addEventListener("click", (e) => {
       const chip = e.target.closest(".chip-btn");
       if (!chip) return;
@@ -671,13 +698,11 @@ const App = (function () {
       renderPrendas();
     });
 
-    // Fav toggle
     $("#favOnlyToggle").addEventListener("change", (e) => {
       state.favOnly = e.target.checked;
       renderPrendas();
     });
 
-    // Prenda grid actions (delegado)
     $("#prendaGrid").addEventListener("click", (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
@@ -698,13 +723,9 @@ const App = (function () {
       }
     });
 
-    // Form: imagen preview
     $("#urlImagenInput").addEventListener("input", updateImgPreview);
-
-    // Form submit
     $("#prendaForm").addEventListener("submit", submitPrendaForm);
 
-    // Form cancel
     document.addEventListener("click", (e) => {
       const c = e.target.closest('[data-action="cancel-prenda"]');
       if (c) {
@@ -712,23 +733,6 @@ const App = (function () {
       }
     });
 
-    // New user
-    $("#newUserBtn").addEventListener("click", showUserModal);
-    $("#userCancel").addEventListener("click", hideUserModal);
-    $("#userForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const f = e.target;
-      const username = f.username.value.trim();
-      const email = f.email.value.trim();
-      if (!username || !email) {
-        toast("Completá username y email", "error");
-        return;
-      }
-      const u = await createUsuario(username, email);
-      if (u) hideUserModal();
-    });
-
-    // Usuario grid actions
     $("#userGrid").addEventListener("click", (e) => {
       const btn = e.target.closest("[data-user-action]");
       if (!btn) return;
@@ -747,14 +751,13 @@ const App = (function () {
       } else if (action === "delete") {
         const u = usuarioById(id);
         showConfirm({
-          title: "¿Eliminar usuario?",
-          message: `Se eliminará @${u.username} y sus prendas asociadas.`,
+          title: "¿Eliminar tu cuenta?",
+          message: `Se eliminará @${u.username} y tus prendas asociadas.`,
           onAccept: () => deleteUsuario(id),
         });
       }
     });
 
-    // Confirm modal
     $("#confirmCancel").addEventListener("click", hideConfirm);
     $("#confirmAccept").addEventListener("click", () => {
       if (state.confirmCallback) state.confirmCallback();
@@ -762,7 +765,6 @@ const App = (function () {
     });
     $$(".modal-backdrop").forEach((b) => b.addEventListener("click", hideConfirm));
 
-    // Drawer
     $("#userSwitcher").addEventListener("click", openDrawer);
     $("#drawerClose").addEventListener("click", closeDrawer);
     $(".drawer-backdrop").addEventListener("click", closeDrawer);
@@ -782,14 +784,12 @@ const App = (function () {
       setView("prendas");
     });
 
-    // Mobile menu
+    $("#logoutBtn").addEventListener("click", logout);
     $("#menuToggle").addEventListener("click", openSidebar);
 
-    // Tecla ESC cierra modales/drawer
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") {
         hideConfirm();
-        hideUserModal();
         closeDrawer();
         closeSidebar();
       }
@@ -798,17 +798,22 @@ const App = (function () {
 
   /* ---------- Init ---------- */
   async function init() {
+    if (!Sesion.exigir()) return;
+
     bind();
+    renderSesion();
+    state.currentUserId = Number(Sesion.id());
     toast("Cargando datos…");
     await loadAll();
     renderAll();
+    const misPrendas = prendasForCurrent().length;
     if (state.prendas.length === 0 && state.usuarios.length === 0) {
       toast(
         "No hay datos. ¿Backend corriendo en :8082 y MySQL con datos en wearfind?",
         "error"
       );
     } else {
-      toast(`Cargadas ${state.prendas.length} prendas y ${state.usuarios.length} usuarios`, "success");
+      toast(`Armario listo (${misPrendas} ${misPrendas === 1 ? "prenda" : "prendas"})`, "success");
     }
   }
 
